@@ -1,0 +1,34 @@
+name: Build
+run-name: ${{ github.actor }}
+on: [push]
+jobs:
+  build:
+    strategy:
+      matrix:
+        debug: [ "true", "false" ]
+        debug_gpio: [ "true", "false" ]
+        debug_i2c: [ "true", "false" ]
+        debug_spi: [ "true", "false" ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Install deps
+        run: sudo apt-get install meson pkg-config libgpiod-dev libusb-1.0-0-dev git
+      - name: Fix subprojects
+        run: |
+         git clone https://github.com/fifteenhex/libdgpc.git
+        working-directory: subprojects
+      - name: Setup
+        run: meson setup builddir
+      - name: Configure
+        run: |
+          meson configure
+          meson configure -Dlibusrio_debug=${{ matrix.debug }}
+          meson configure -Dlibusrio_debug_gpio=${{ matrix.debug_gpio }}
+          meson configure -Dlibusrio_debug_i2c=${{ matrix.debug_i2c }}
+          meson configure -Dlibusrio_debug_spi=${{ matrix.debug_spi }}
+        working-directory: builddir
+      - name: Compile
+        run: meson compile
+        working-directory: builddir

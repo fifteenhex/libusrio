@@ -1,0 +1,3 @@
+[submodule "subprojects/libdgpc"]
+	path = subprojects/libdgpc
+	url = https://github.com/fifteenhex/libdgpc.git

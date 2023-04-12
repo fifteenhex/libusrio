@@ -1,0 +1,8 @@
+option('libusrio_debug', type: 'boolean', value : false)
+option('libusrio_debug_i2c', type: 'boolean', value : false)
+option('libusrio_debug_spi', type: 'boolean', value : false)
+option('libusrio_debug_gpio', type: 'boolean', value : false)
+
+option('libusrio_i2cdev', type: 'boolean', value : true)
+option('libusrio_spidev', type: 'boolean', value : true)
+option('libusrio_gpiod', type: 'boolean', value : true)
