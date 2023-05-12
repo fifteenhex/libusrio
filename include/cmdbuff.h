@@ -5,6 +5,7 @@
 #ifndef SRC_CMDBUFF_H_
 #define SRC_CMDBUFF_H_
 
+#include <assert.h>
 #include <stdint.h>
 
 struct cmdbuff {
@@ -18,6 +19,8 @@ struct cmdbuff {
 
 static inline void cmdbuff_push(struct cmdbuff *cmdbuff, uint8_t value)
 {
+	assert(cmdbuff->pos < sizeof(cmdbuff->buff));
+
 	cmdbuff->buff[cmdbuff->pos++] = value;
 }
 
