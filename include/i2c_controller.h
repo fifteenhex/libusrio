@@ -121,7 +121,7 @@ static inline int i2c_controller_do_transaction(const struct i2c_controller *i2c
 	return ret;
 }
 
-static inline int i2c_controller_shutdown(const struct i2c_controller *i2c_controller)
+static inline int i2c_controller_shutdown(const struct i2c_controller *i2c_controller, void *priv)
 {
 	int ret = 0;
 

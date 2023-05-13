@@ -116,6 +116,30 @@ int libusrio_mfd_close(const struct libusrio_mfd *mfd, void *priv)
 
 	mfd->get_flags(mfd, priv, &flags);
 
+	if (flags & LIBUSRIO_MFD_WANTI2C) {
+		if (mfd->get_i2c) {
+			i2c = mfd->get_i2c(mfd, priv);
+			ret = i2c_controller_shutdown(i2c, priv);
+			if (ret)
+				goto err_i2c;
+		}
+		else {
+			ret = -ENODEV;
+			goto err_i2c;
+		}
+	}
+
+	if (flags & LIBUSRIO_MFD_WANTGPIO) {
+		if (mfd->get_gpio) {
+			gpio = mfd->get_gpio(mfd, priv);
+			gpio_controller_shutdown(gpio, priv);
+		}
+		else {
+			ret = -ENODEV;
+			goto err_gpio;
+		}
+	}
+
 	if (flags & LIBUSRIO_MFD_WANTSPI) {
 		if (mfd->get_spi) {
 			spi = mfd->get_spi(mfd, priv);
@@ -130,5 +154,7 @@ int libusrio_mfd_close(const struct libusrio_mfd *mfd, void *priv)
 	}
 
 err_spi:
+err_gpio:
+err_i2c:
 	return 0;
 }
