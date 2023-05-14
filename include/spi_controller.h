@@ -55,8 +55,8 @@ struct spi_controller {
 	int (*max_transfer)(const struct spi_controller *spi_controller, void *priv);
 
 	/* Does this SPI controller need a special connection string? */
-	bool (*need_connstring)(const struct spi_controller *spi_controller, void *priv);
-	const char *(*connstring_format)(const struct spi_controller *spi_controller, void *priv);
+	bool (*need_connstring)(const struct spi_controller *spi_controller);
+	const char *(*connstring_format)(const struct spi_controller *spi_controller);
 };
 
 SPI_CONTROLLER_RTN_T spi_controller_enable_manual_mode(const struct spi_controller *spi_controller,
@@ -86,12 +86,12 @@ int spi_controller_init(const struct spi_controller *spi_controller,
 int spi_controller_shutdown(const struct spi_controller *spi_controller, void *priv);
 int spi_controller_close(const struct spi_controller *spi_controller, void *priv);
 
-static inline bool spi_controller_need_connstring(const struct spi_controller *spi_controller, void *priv)
+static inline bool spi_controller_need_connstring(const struct spi_controller *spi_controller)
 {
 	assert(spi_controller);
 
 	if (spi_controller->need_connstring)
-		return spi_controller->need_connstring(spi_controller, priv);
+		return spi_controller->need_connstring(spi_controller);
 
 	return false;
 }
