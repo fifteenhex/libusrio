@@ -25,11 +25,11 @@ static int spidev_send_command(const struct spi_controller *spi_controller,
 
 	struct spi_ioc_transfer msgs[] = {
 		{
-			.tx_buf = write_buf,
+			.tx_buf = (__u64) write_buf,
 			.len = write_sz,
 		},
 		{
-			.rx_buf = read_buf,
+			.rx_buf = (__u64) read_buf,
 			.len = read_sz,
 		},
 	};
