@@ -9,6 +9,7 @@ cflags = cc.get_supported_arguments([
     '-Werror=implicit-function-declaration',
     '-Werror=format-security'
 ])
+add_project_arguments(cflags, language: 'c')
 
 inc = include_directories('include')
 

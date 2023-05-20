@@ -12,7 +12,7 @@ conf_data = configuration_data()
 conf_data.set('TAG', 'libusrio_i2c_controller')
 conf_data.set('DEBUG_OPT', 'CONFIG_LIBUSRIO_DEBUG_I2C')
 conf_data.set('PREFIX', 'i2c_controller')
-conf_data.set('FUNC', '_log_var->_data->log_cb')
+conf_data.set('FUNC', '(_log_var)->log_cb')
 
 configure_file(input : log_macros_tmpl,
                output : 'i2c_controller_log.h',

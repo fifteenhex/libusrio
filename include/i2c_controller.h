@@ -15,11 +15,7 @@
 #include <linux/i2c-dev.h>
 #include <linux/i2c.h>
 
-struct i2c_client {
-	uint8_t addr;
-	void *priv;
-};
-
+/* This is a container for data libusrio needs internally */
 struct libusrio_i2c_data {
 	int(*log_cb)(int level, const char* tag, const char *restrict format,...);
 };
@@ -33,44 +29,19 @@ struct i2c_controller {
 			int(*log_cb)(int level, const char* tag, const char *restrict format,...),
 			void *priv);
 	int (*get_func)(const struct i2c_controller *i2c_controller);
-	int (*set_addr)(const struct i2c_controller *i2c_controller, uint8_t addr);
 	int (*set_speed)(const struct i2c_controller *i2c_controller);
 	/* Return a negative on an error, otherwise return the number of messages transmitted */
-	int (*do_transaction)(const struct i2c_controller *i2c_controller, struct i2c_rdwr_ioctl_data *i2c_data);
-	int (*shutdown)(const struct i2c_controller *i2c_controller);
+	int (*do_transaction)(const struct i2c_controller *i2c_controller, struct i2c_rdwr_ioctl_data *i2c_data, void *priv);
+	int (*shutdown)(const struct i2c_controller *i2c_controller, void *priv);
 
 	/* quirk handling for shitty i2c interfaces */
 	int (*max_transfer)(const struct i2c_controller *i2c_controller);
 	/* The controller doesn't stop if it gets a NAK during tx */
 	bool (*does_not_stop_on_nak)(const struct i2c_controller *i2c_controller);
 
-	struct i2c_client *client;
-
-	/* NOT YOURS DON'T TOUCH!! */
-	struct libusrio_i2c_data *_data;
+	/* Internal API */
+	struct libusrio_i2c_data *(*get_libusrio_data)(const struct i2c_controller *i2c_controller, void *priv);
 };
-
-static inline void i2c_controller_set_addr(const struct i2c_controller *i2c_controller, uint8_t addr)
-{
-	i2c_controller->client->addr = addr;
-
-	if (i2c_controller->set_addr)
-		i2c_controller->set_addr(i2c_controller, addr);
-}
-
-static inline uint8_t i2c_controller_get_addr(const struct i2c_controller *i2c_controller)
-{
-	assert(i2c_controller);
-
-	return i2c_controller->client->addr;
-}
-
-static inline void i2c_controller_set_priv(const struct i2c_controller *i2c_controller, void *priv)
-{
-	assert(!i2c_controller->client->priv);
-
-	i2c_controller->client->priv = priv;
-}
 
 static inline int i2c_controller_max_transfer(const struct i2c_controller *i2c_controller)
 {
@@ -80,13 +51,6 @@ static inline int i2c_controller_max_transfer(const struct i2c_controller *i2c_c
 		return i2c_controller->max_transfer(i2c_controller);
 
 	return -ENOTSUP;
-}
-
-static inline void *i2c_controller_get_priv(const struct i2c_controller *i2c_controller)
-{
-	assert(i2c_controller->client->priv);
-
-	return i2c_controller->client->priv;
 }
 
 int i2c_controller_open(
@@ -99,17 +63,19 @@ int i2c_controller_init(
 		int(*log_cb)(int level, const char *tag, const char *restrict format,...),
 		void *priv);
 
-int i2c_controller_ping(const struct i2c_controller *i2c_controller, uint8_t addr);
+int i2c_controller_ping(const struct i2c_controller *i2c_controller,
+		uint8_t addr,
+		void *priv);
 
 static inline int i2c_controller_do_transaction(const struct i2c_controller *i2c_controller,
-		struct i2c_rdwr_ioctl_data *i2c_data, int tries)
+		struct i2c_rdwr_ioctl_data *i2c_data, int tries, void *priv)
 {
 	int ret;
 
 	assert(i2c_controller);
 
 	for(; tries; tries--) {
-		ret = i2c_controller->do_transaction(i2c_controller, i2c_data);
+		ret = i2c_controller->do_transaction(i2c_controller, i2c_data, priv);
 		if (ret <= 0) {
 			//printf("Error sending write command: %d, tries left %d\n", ret, tries);
 			ret = -1;
@@ -121,15 +87,7 @@ static inline int i2c_controller_do_transaction(const struct i2c_controller *i2c
 	return ret;
 }
 
-static inline int i2c_controller_shutdown(const struct i2c_controller *i2c_controller, void *priv)
-{
-	int ret = 0;
-
-	if (i2c_controller->shutdown)
-		ret = i2c_controller->shutdown(i2c_controller);
-
-	return ret;
-}
+int i2c_controller_shutdown(const struct i2c_controller *i2c_controller, void *priv);
 
 static inline bool i2c_controller_can_mangle(const struct i2c_controller *i2c_controller)
 {
@@ -149,18 +107,28 @@ static inline bool i2c_controller_can_mangle(const struct i2c_controller *i2c_co
 
 #define I2C_CONTROLLER_CMD_RETRIES 1
 
-int i2c_controller_cmd_simple(const struct i2c_controller *i2c_controller, uint8_t *cmd, size_t cmdlen);
+int i2c_controller_cmd_simple(const struct i2c_controller *i2c_controller,
+			      uint8_t addr, uint8_t *cmd, size_t cmdlen,
+			      void *priv);
 int i2c_controller_write_then_read_simple(const struct i2c_controller *i2c_controller,
-					  uint8_t *writebuf, size_t writesz, uint8_t* readbuf, size_t readsz);
+					  uint8_t addr, uint8_t *writebuf, size_t writesz, uint8_t* readbuf, size_t readsz,
+					  void *priv);
 bool i2c_controller_does_not_stop_on_nak(const struct i2c_controller *i2c_controller);
-int i2c_controller_cmd(const struct i2c_controller *i2c_controller, uint8_t *cmd, size_t cmdlen);
+int i2c_controller_cmd(const struct i2c_controller *i2c_controller,
+		       uint8_t addr, uint8_t *cmd, size_t cmdlen,
+		       void *priv);
 int i2c_controller_write_then_read(const struct i2c_controller *i2c_controller,
-				   uint8_t *writebuf, size_t writesz, uint8_t* readbuf, size_t readsz);
+				   uint8_t addr, uint8_t *writebuf, size_t writesz, uint8_t* readbuf, size_t readsz,
+				   void *priv);
 int i2c_controller_write_then_write(const struct i2c_controller *i2c_controller,
-				    uint8_t *writebuf0, size_t writesz0, uint8_t* writebuf1, size_t writesz1);
+				    uint8_t addr, uint8_t *writebuf0, size_t writesz0, uint8_t* writebuf1, size_t writesz1,
+				    void *priv);
 int i2c_controller_write_then_write_simple(const struct i2c_controller *i2c_controller,
-					   uint8_t *writebuf0, size_t writesz0, uint8_t* writebuf1, size_t writesz1);
-int i2c_controller_cmd_onebyone(const struct i2c_controller *i2c_controller, uint8_t *cmd, size_t cmdlen);
+					   uint8_t addr, uint8_t *writebuf0, size_t writesz0, uint8_t* writebuf1, size_t writesz1,
+					   void *priv);
+int i2c_controller_cmd_onebyone(const struct i2c_controller *i2c_controller,
+		uint8_t addr, uint8_t *cmd, size_t cmdlen,
+		void *priv);
 
 extern const struct i2c_controller i2cdev_i2c;
 

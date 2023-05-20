@@ -14,6 +14,7 @@
 
 struct i2cdev_priv {
 	int fd;
+	struct libusrio_i2c_data libusrio_i2c_data;
 };
 
 static int i2c_controller_i2cdev_open(const struct i2c_controller *i2c_controller,
@@ -50,68 +51,38 @@ static int i2c_controller_i2cdev_open(const struct i2c_controller *i2c_controlle
 
 	i2cdev_priv->fd = fd;
 
-	i2c_controller_set_priv(i2c_controller, i2cdev_priv);
-
 	*priv = i2cdev_priv;
 
 	return 0;
 }
 
-static int i2c_controller_i2cdevdo_set_addr(const struct i2c_controller *i2c_controller, uint8_t addr)
-{
-	struct i2cdev_priv *priv;
-
-	assert(i2c_controller);
-
-	priv = i2c_controller_get_priv(i2c_controller);
-
-	if (ioctl(priv->fd, I2C_SLAVE, addr) < 0) {
-		printf("Error setting slave address 0x%02x: errno %d.\n",
-				addr, errno);
-		return -errno;
-	}
-
-	return 0;
-}
-
 static int i2c_controller_i2cdevdo_transaction(const struct i2c_controller *i2c_controller,
-		struct i2c_rdwr_ioctl_data *i2c_data)
+		struct i2c_rdwr_ioctl_data *i2c_data,
+		void *priv)
 {
-	struct i2cdev_priv *priv;
+	struct i2cdev_priv *i2cdev_priv = priv;
 
 	assert(i2c_controller);
 
-	priv = i2c_controller_get_priv(i2c_controller);
-
-	return ioctl(priv->fd, I2C_RDWR, i2c_data);
+	return ioctl(i2cdev_priv->fd, I2C_RDWR, i2c_data);
 }
 
-static int i2c_controller_i2cdevdo_shutdown(const struct i2c_controller *i2c_controller)
+static int i2c_controller_i2cdevdo_shutdown(const struct i2c_controller *i2c_controller, void *priv)
 {
-	struct i2cdev_priv *priv;
+	struct i2cdev_priv *i2cdev_priv = priv;
 
 	assert(i2c_controller);
 
-	priv = i2c_controller_get_priv(i2c_controller);
-
-	if (priv->fd >= 0)
-		close(priv->fd);
+	if (i2cdev_priv->fd >= 0)
+		close(i2cdev_priv->fd);
 
 	return 0;
 }
-
-static struct i2c_client i2cdev_client;
-
-static struct libusrio_i2c_data i2cdev_libusrio_data;
 
 const struct i2c_controller i2cdev_i2c = {
 	.name = "i2cdev",
 	.open = i2c_controller_i2cdev_open,
-	.set_addr = i2c_controller_i2cdevdo_set_addr,
 	.do_transaction =  i2c_controller_i2cdevdo_transaction,
 	.shutdown = i2c_controller_i2cdevdo_shutdown,
-
-	.client = &i2cdev_client,
-	._data = &i2cdev_libusrio_data,
 };
 
