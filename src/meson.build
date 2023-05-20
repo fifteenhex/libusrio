@@ -54,6 +54,11 @@ if get_option('libusrio_spidev')
 	libusrio_sources += [ 'spidev.c' ]
 endif
 
+# For dummy
+if get_option('libusrio_dummy')
+	libusrio_sources += [ 'dummy.c' ]
+endif
+
 libusrio = shared_library('usrio',
                            libusrio_sources,
                            include_directories: inc,
